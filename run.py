@@ -7,6 +7,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Windows terminals default to a legacy code page (cp1252) that cannot encode
+# Georgian text, which crashed the run *after* the email had already been sent.
+# Force UTF-8 so printing a transcript or summary title can never fail.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from transcribe import transcribe
