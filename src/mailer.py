@@ -9,6 +9,8 @@ load_dotenv()
 
 EMAIL_SENDER   = os.getenv("EMAIL_SENDER")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+ORG_NAME       = os.getenv("ORG_NAME", "")
+ORG_CONTACT    = os.getenv("ORG_CONTACT_EMAIL", "")
 
 GREEN      = "#2D7A3A"
 GREEN_LIGHT = "#EBF5ED"
@@ -115,6 +117,9 @@ def format_html(data: dict, transcript: str) -> str:
 
     transcript_lines = transcript.replace("\n", "<br>")
 
+    footer_parts = [p for p in (ORG_NAME, ORG_CONTACT) if p]
+    footer_org = (" · " + " · ".join(footer_parts)) if footer_parts else ""
+
     html = f"""
 <!DOCTYPE html>
 <html>
@@ -134,7 +139,7 @@ def format_html(data: dict, transcript: str) -> str:
           <td style="background:{GREEN}; padding:28px 36px;">
             <div style="font-size:13px; color:rgba(255,255,255,0.7); 
                         margin-bottom:4px; letter-spacing:0.05em;">
-              ქართული აგრო სახლი
+              {ORG_NAME}
             </div>
             <div style="font-size:22px; color:#ffffff; font-weight:600; 
                         line-height:1.3;">
@@ -180,8 +185,8 @@ def format_html(data: dict, transcript: str) -> str:
           <td style="background:{GREEN_LIGHT}; padding:16px 36px; 
                      border-top:1px solid {BORDER};">
             <div style="font-size:12px; color:{MUTED}; text-align:center;">
-              ეს შეჯამება გენერირებულია ავტომატურად AI-ის მეშვეობით · 
-              Georgian Agro House · info@gah.ge
+              ეს შეჯამება გენერირებულია ავტომატურად AI-ის მეშვეობით
+              {footer_org}
             </div>
           </td>
         </tr>

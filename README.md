@@ -26,7 +26,7 @@ Three modules, one entry point:
 | File | Responsibility |
 |---|---|
 | `run.py` | Command line entry point, orchestrates the three steps, saves intermediate output |
-| `src/transcribe.py` | Speech to text through ElevenLabs Scribe v2, Georgian |
+| `src/transcribe.py` | Speech to text through ElevenLabs Scribe v2, Georgian, with speaker labels |
 | `src/summarize.py` | Summarisation through Claude, returns validated JSON |
 | `src/mailer.py` | Builds the HTML email and sends it over Gmail SMTP |
 
@@ -34,7 +34,9 @@ Three modules, one entry point:
 
 Transcription alone is not useful. A raw Georgian transcript of a 40 minute meeting is still 40 minutes of reading. The value is in the extraction, and naive summarisation invents decisions that were never made.
 
-Two things address that. The system prompt keys on the phrases Georgian speakers actually use to mark a decision, an assignment, or an open question, so extraction is anchored to signal words rather than to the model's guess about what mattered. And the prompt is explicitly instructed to omit rather than guess: unclear items get flagged as needing clarification, names that cannot be heard clearly become a generic participant label, and numbers are only reported when stated explicitly. A summary that says "this was unclear" is worth more than a confident invention.
+Three things address that. The system prompt keys on the phrases Georgian speakers actually use to mark a decision, an assignment, or an open question, so extraction is anchored to signal words rather than to the model's guess about what mattered. The prompt is explicitly instructed to omit rather than guess: unclear items get flagged as needing clarification, names that cannot be heard clearly become a generic participant label, and numbers are only reported when stated explicitly. And transcription runs with diarization on and verbatim off, so the text reaching Claude is speaker-labelled and free of filler words, which is what makes it possible to attribute an action item to whoever committed to it.
+
+A summary that says "this was unclear" is worth more than a confident invention.
 
 ## Setup
 
@@ -75,8 +77,9 @@ Summary text is generated in Georgian script.
 
 ## Limitations, honestly
 
-- Speaker separation is not implemented, so `owner` on an action item is only as good as the meeting saying a name out loud.
-- Transcription quality falls off with overlapping speech and background noise. A phone on the table in a quiet room works. A phone in a busy room does not.
+- Diarization separates speakers but does not name them. Output is `speaker_0` and `speaker_1` unless someone is addressed by name in the recording.
+- **Microphone distance is the variable that matters most.** A phone close to the speaker transcribes cleanly. The same conversation recorded across a room degrades badly, and no setting compensates for it.
+- Overlapping speech reduces both transcription and diarization accuracy.
 - Gmail SMTP only. Any other provider needs a change in `src/mailer.py`.
 - Recordings, transcripts and summaries stay on the machine that runs it and are deliberately excluded from version control.
 
