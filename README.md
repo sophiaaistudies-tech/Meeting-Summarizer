@@ -1,5 +1,7 @@
 # Meeting Summarizer (Georgian)
 
+[![CI](https://github.com/sophiaaistudies-tech/Meeting-Summarizer/actions/workflows/ci.yml/badge.svg)](https://github.com/sophiaaistudies-tech/Meeting-Summarizer/actions/workflows/ci.yml)
+
 **Live app: https://meeting-summarizer-production-81bf.up.railway.app**
 
 Turns a recorded meeting into a structured summary and emails it to the attendees. Built for Georgian-language meetings, which most off-the-shelf meeting tools do not transcribe usably.
@@ -26,7 +28,7 @@ business meetings, returns strict JSON        ->  summaries/
 HTML email via Gmail SMTP                     ->  attendees
 ```
 
-Three modules, one entry point:
+Two entry points over the same three-stage pipeline:
 
 | File | Responsibility |
 |---|---|
@@ -147,6 +149,6 @@ A public URL changes the threat model. Use a passcode that is long and not deriv
 
 Python, FastAPI, ElevenLabs Scribe v2, Anthropic Claude, Gmail SMTP.
 
-## Licence
+## License
 
 MIT. See `LICENSE`.
