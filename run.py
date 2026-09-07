@@ -16,9 +16,10 @@ for _stream in (sys.stdout, sys.stderr):
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-from transcribe import transcribe
-from summarize  import summarize
-from mailer     import send
+# These follow the sys.path change above and so cannot sit at the top of the file.
+from transcribe import transcribe  # noqa: E402
+from summarize  import summarize  # noqa: E402
+from mailer     import send  # noqa: E402
 
 TRANSCRIPTS_DIR = "transcripts"
 SUMMARIES_DIR   = "summaries"
@@ -48,7 +49,7 @@ def main():
         sys.exit(1)
 
     print(f"\n{'='*50}")
-    print(f"Meeting Summarizer")
+    print("Meeting Summarizer")
     print(f"File      : {audio_path}")
     print(f"Recipients: {', '.join(recipients)}")
     print(f"{'='*50}\n")

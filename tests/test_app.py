@@ -283,9 +283,10 @@ def test_forwarded_header_ignored_when_proxy_not_trusted(client, monkeypatch):
 def test_forwarded_header_used_when_proxy_trusted(client, monkeypatch):
     monkeypatch.setattr(webapp, "TRUST_PROXY", True)
     monkeypatch.setattr(webapp, "MAX_JOBS_PER_HOUR", 1)
-    mk = lambda ip: dict(data={"passcode": "test-code", "recipients": "a@b.ge"},
-                         files={"file": ("a.m4a", io.BytesIO(b"x" * 999), "audio/mp4")},
-                         headers={"X-Forwarded-For": ip})
+    def mk(ip):
+        return dict(data={"passcode": "test-code", "recipients": "a@b.ge"},
+                    files={"file": ("a.m4a", io.BytesIO(b"x" * 999), "audio/mp4")},
+                    headers={"X-Forwarded-For": ip})
     assert client.post("/api/jobs", **mk("1.1.1.1")).status_code == 200
     # a different visitor gets their own allowance
     assert client.post("/api/jobs", **mk("2.2.2.2")).status_code == 200

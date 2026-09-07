@@ -24,7 +24,6 @@ import sys
 import uuid
 import time
 import secrets
-import shutil
 import tempfile
 import threading
 from pathlib import Path
