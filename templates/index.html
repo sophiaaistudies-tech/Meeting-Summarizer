@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>შეხვედრის შეჯამება</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600&family=Noto+Serif+Georgian:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1A1A1A;
+    --muted:#666666;
+    --paper:#FAFAF8;
+    --line:#E0E0E0;
+    --green:#2D7A3A;
+    --green-tint:#EBF5ED;
+    --red:#A32222;
+    --sans:'Noto Sans Georgian','Segoe UI',system-ui,sans-serif;
+    --serif:'Noto Serif Georgian',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--sans);font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .sheet{max-width:37rem;margin:0 auto;padding:3rem 1.25rem 4rem}
+
+  header{border-left:3px solid var(--green);padding-left:1rem;margin-bottom:2.5rem}
+  h1{font-family:var(--serif);font-weight:600;font-size:1.75rem;line-height:1.25;margin:0 0 .4rem}
+  .lede{margin:0;color:var(--muted);max-width:32rem}
+
+  .lang{float:right;display:flex;gap:.25rem;margin-top:.2rem}
+  .lang button{
+    font-family:var(--sans);font-size:.8rem;background:none;border:1px solid var(--line);
+    color:var(--muted);padding:.15rem .5rem;cursor:pointer;border-radius:2px;
+  }
+  .lang button[aria-pressed="true"]{border-color:var(--green);color:var(--green);background:var(--green-tint)}
+
+  .field{border-top:1px solid var(--line);padding:1.5rem 0}
+  .field:last-of-type{border-bottom:1px solid var(--line)}
+  label{display:block;font-weight:600;font-size:.95rem;margin-bottom:.35rem}
+  .hint{color:var(--muted);font-size:.85rem;margin:0 0 .75rem}
+
+  .drop{
+    display:block;width:100%;text-align:left;cursor:pointer;
+    background:#fff;border:1px solid var(--line);border-left:3px solid var(--line);
+    padding:1.1rem 1rem;font-family:var(--sans);font-size:.95rem;color:var(--muted);
+  }
+  .drop:hover,.drop.over{border-left-color:var(--green);color:var(--ink)}
+  .drop.has-file{border-left-color:var(--green);color:var(--ink);background:var(--green-tint)}
+  .drop .fname{font-weight:600;display:block}
+  .drop .fmeta{font-size:.8rem;color:var(--muted)}
+  input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+
+  input[type=text],input[type=password],textarea{
+    width:100%;font-family:var(--sans);font-size:1rem;color:var(--ink);
+    background:#fff;border:1px solid var(--line);padding:.7rem .8rem;border-radius:2px;
+  }
+  textarea{resize:vertical;min-height:4.5rem}
+  :focus-visible{outline:2px solid var(--green);outline-offset:2px}
+
+  .go{
+    margin-top:1.75rem;width:100%;font-family:var(--sans);font-weight:600;font-size:1rem;
+    background:var(--green);color:#fff;border:none;padding:.9rem 1rem;cursor:pointer;border-radius:2px;
+  }
+  .go:disabled{background:#B7C9BB;cursor:default}
+
+  .stages{margin-top:2rem;display:none}
+  .stages.on{display:block}
+  .stage{display:flex;gap:.75rem;align-items:baseline;padding:.45rem 0;color:var(--muted)}
+  .stage .n{
+    flex:none;width:1.4rem;height:1.4rem;border:1px solid var(--line);border-radius:50%;
+    font-size:.75rem;display:grid;place-items:center;color:var(--muted);background:#fff;
+  }
+  .stage.active{color:var(--ink);font-weight:600}
+  .stage.active .n{border-color:var(--green);color:var(--green)}
+  .stage.done .n{background:var(--green);border-color:var(--green);color:#fff}
+  .stage.done{color:var(--ink)}
+
+  .result{margin-top:1.5rem;padding:1rem;border-left:3px solid var(--green);background:var(--green-tint);display:none}
+  .result.on{display:block}
+  .result h2{font-family:var(--serif);font-size:1.05rem;margin:0 0 .3rem}
+  .result p{margin:0;font-size:.9rem;color:var(--muted)}
+  .error{margin-top:1.5rem;padding:1rem;border-left:3px solid var(--red);background:#FBF0F0;display:none}
+  .error.on{display:block}
+  .error p{margin:0;font-size:.9rem}
+  .error code{font-size:.8rem;color:var(--muted);word-break:break-all}
+
+  footer{margin-top:3rem;color:var(--muted);font-size:.85rem}
+  footer p{margin:.4rem 0}
+
+  @media (prefers-reduced-motion: no-preference){
+    .stage,.drop,.go{transition:color .15s,border-color .15s,background .15s}
+  }
+</style>
+</head>
+<body>
+<main class="sheet">
+  <div class="lang">
+    <button type="button" data-lang="ka" aria-pressed="true">ქარ</button>
+    <button type="button" data-lang="en" aria-pressed="false">EN</button>
+  </div>
+
+  <header>
+    <h1 data-t="title">შეხვედრის შეჯამება</h1>
+    <p class="lede" data-t="lede">ატვირთე შეხვედრის ჩანაწერი. ტექსტი ამოიშლება, შეჯამდება გადაწყვეტილებებად და დავალებებად, და მიდის მითითებულ მისამართებზე.</p>
+  </header>
+
+  <div class="field">
+    <label for="file" data-t="fileLabel">ჩანაწერი</label>
+    <p class="hint" data-t="fileHint">აუდიო ან ვიდეო. მიკროფონი ახლოს იყოს მოსაუბრესთან, სიზუსტე ამაზე დგას.</p>
+    <button type="button" class="drop" id="drop">
+      <span data-t="dropEmpty">ფაილის ასარჩევად დააჭირე, ან ჩააგდე აქ</span>
+    </button>
+    <input type="file" id="file" accept="audio/*,video/*">
+  </div>
+
+  <div class="field">
+    <label for="recipients" data-t="toLabel">მიმღებები</label>
+    <p class="hint" data-t="toHint">მეილები მძიმით, მაქსიმუმ ხუთი.</p>
+    <textarea id="recipients" placeholder="name@company.ge, name2@company.ge"></textarea>
+  </div>
+
+  <div class="field">
+    <label for="passcode" data-t="codeLabel">კოდი</label>
+    <p class="hint" data-t="codeHint">გაგზავნა ხდება კომპანიის მეილიდან, ამიტომ წვდომა კოდით იხსნება.</p>
+    <input type="password" id="passcode" autocomplete="current-password">
+  </div>
+
+  <button class="go" id="go" data-t="go">შეჯამების გაგზავნა</button>
+
+  <div class="stages" id="stages">
+    <div class="stage" data-stage="transcribing"><span class="n">1</span><span data-t="s1">ტექსტად გადაყვანა</span></div>
+    <div class="stage" data-stage="summarizing"><span class="n">2</span><span data-t="s2">შეჯამება</span></div>
+    <div class="stage" data-stage="sending"><span class="n">3</span><span data-t="s3">გაგზავნა</span></div>
+  </div>
+
+  <div class="result" id="result">
+    <h2 id="resultTitle"></h2>
+    <p id="resultTo"></p>
+  </div>
+
+  <div class="error" id="error">
+    <p data-t="errLead">ვერ დასრულდა.</p>
+    <p><code id="errText"></code></p>
+  </div>
+
+  <footer>
+    <p data-t="foot1">ჩანაწერი სერვერზე არ ინახება, დამუშავების შემდეგ იშლება.</p>
+    <p data-t="foot2">ქართული, ავტომატური ენის ამოცნობით და მოსაუბრეების გამოყოფით.</p>
+  </footer>
+</main>
+
+<script>
+const T = {
+  ka:{
+    title:"შეხვედრის შეჯამება",
+    lede:"ატვირთე შეხვედრის ჩანაწერი. ტექსტი ამოიშლება, შეჯამდება გადაწყვეტილებებად და დავალებებად, და მიდის მითითებულ მისამართებზე.",
+    fileLabel:"ჩანაწერი",
+    fileHint:"აუდიო ან ვიდეო. მიკროფონი ახლოს იყოს მოსაუბრესთან, სიზუსტე ამაზე დგას.",
+    dropEmpty:"ფაილის ასარჩევად დააჭირე, ან ჩააგდე აქ",
+    toLabel:"მიმღებები", toHint:"მეილები მძიმით, მაქსიმუმ ხუთი.",
+    codeLabel:"კოდი", codeHint:"გაგზავნა ხდება კომპანიის მეილიდან, ამიტომ წვდომა კოდით იხსნება.",
+    go:"შეჯამების გაგზავნა", going:"მუშაობს...",
+    s1:"ტექსტად გადაყვანა", s2:"შეჯამება", s3:"გაგზავნა",
+    errLead:"ვერ დასრულდა.",
+    sent:"გაგზავნილია", sentTo:"მიმღებები: ",
+    foot1:"ჩანაწერი სერვერზე არ ინახება, დამუშავების შემდეგ იშლება.",
+    foot2:"ქართული, ავტომატური ენის ამოცნობით და მოსაუბრეების გამოყოფით.",
+    needFile:"აირჩიე ჩანაწერი.", needTo:"მიუთითე მინიმუმ ერთი მეილი.", needCode:"შეიყვანე კოდი."
+  },
+  en:{
+    title:"Meeting summary",
+    lede:"Upload a recording. It is transcribed, summarised into decisions and action items, and emailed to the addresses you enter.",
+    fileLabel:"Recording",
+    fileHint:"Audio or video. Keep the microphone close to whoever is speaking, accuracy depends on it.",
+    dropEmpty:"Click to choose a file, or drop one here",
+    toLabel:"Recipients", toHint:"Email addresses separated by commas, five at most.",
+    codeLabel:"Passcode", codeHint:"Mail is sent from the company account, so access needs a passcode.",
+    go:"Send the summary", going:"Working...",
+    s1:"Transcribing", s2:"Summarising", s3:"Sending",
+    errLead:"It did not finish.",
+    sent:"Sent", sentTo:"Recipients: ",
+    foot1:"The recording is not kept on the server, it is deleted after processing.",
+    foot2:"Georgian, with automatic language detection and speaker separation.",
+    needFile:"Choose a recording.", needTo:"Enter at least one email address.", needCode:"Enter the passcode."
+  }
+};
+let lang = "ka";
+
+const $ = id => document.getElementById(id);
+const fileInput = $("file"), drop = $("drop"), go = $("go"),
+      stages = $("stages"), result = $("result"), errBox = $("error");
+
+function paint(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach(el=>{
+    const v = T[lang][el.dataset.t];
+    if(v) el.textContent = v;
+  });
+  document.querySelectorAll(".lang button").forEach(b=>
+    b.setAttribute("aria-pressed", String(b.dataset.lang===lang)));
+  if(fileInput.files[0]) showFile(fileInput.files[0]);
+  go.textContent = go.disabled ? T[lang].going : T[lang].go;
+}
+document.querySelectorAll(".lang button").forEach(b=>
+  b.addEventListener("click",()=>{ lang=b.dataset.lang; paint(); }));
+
+function showFile(f){
+  const mb = (f.size/1048576).toFixed(1);
+  drop.innerHTML = "";
+  const n = document.createElement("span"); n.className="fname"; n.textContent=f.name;
+  const m = document.createElement("span"); m.className="fmeta"; m.textContent=mb+" MB";
+  drop.append(n,m); drop.classList.add("has-file");
+}
+drop.addEventListener("click",()=>fileInput.click());
+fileInput.addEventListener("change",()=>{ if(fileInput.files[0]) showFile(fileInput.files[0]); });
+["dragenter","dragover"].forEach(e=>drop.addEventListener(e,ev=>{
+  ev.preventDefault(); drop.classList.add("over"); }));
+["dragleave","drop"].forEach(e=>drop.addEventListener(e,ev=>{
+  ev.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop",ev=>{
+  const f = ev.dataTransfer.files[0];
+  if(f){ fileInput.files = ev.dataTransfer.files; showFile(f); }
+});
+
+function fail(msg){
+  errBox.classList.add("on");
+  $("errText").textContent = msg;
+  go.disabled = false; go.textContent = T[lang].go;
+}
+function markStage(current){
+  const order = ["transcribing","summarizing","sending"];
+  const i = order.indexOf(current);
+  document.querySelectorAll(".stage").forEach((el,idx)=>{
+    el.classList.toggle("active", idx===i);
+    el.classList.toggle("done", i===-1 ? current==="done" : idx<i);
+  });
+}
+
+go.addEventListener("click", async ()=>{
+  errBox.classList.remove("on"); result.classList.remove("on");
+  const f = fileInput.files[0];
+  if(!f) return fail(T[lang].needFile);
+  if(!$("recipients").value.trim()) return fail(T[lang].needTo);
+  if(!$("passcode").value) return fail(T[lang].needCode);
+
+  go.disabled = true; go.textContent = T[lang].going;
+  stages.classList.add("on"); markStage("transcribing");
+
+  const body = new FormData();
+  body.append("file", f);
+  body.append("recipients", $("recipients").value);
+  body.append("passcode", $("passcode").value);
+
+  let jobId;
+  try{
+    const r = await fetch("/api/jobs",{method:"POST",body});
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) return fail(d.detail || ("HTTP "+r.status));
+    jobId = d.job_id;
+  }catch(e){ return fail(String(e)); }
+
+  const poll = setInterval(async ()=>{
+    try{
+      const r = await fetch("/api/jobs/"+jobId);
+      const d = await r.json();
+      markStage(d.stage);
+      if(d.stage==="done"){
+        clearInterval(poll);
+        document.querySelectorAll(".stage").forEach(el=>el.classList.add("done"));
+        $("resultTitle").textContent = d.title || T[lang].sent;
+        $("resultTo").textContent = T[lang].sentTo + (d.recipients||[]).join(", ");
+        result.classList.add("on");
+        go.disabled = false; go.textContent = T[lang].go;
+      }else if(d.stage==="failed"){
+        clearInterval(poll); fail(d.error||"unknown");
+      }
+    }catch(e){ clearInterval(poll); fail(String(e)); }
+  }, 2000);
+});
+
+paint();
+</script>
+</body>
+</html>
