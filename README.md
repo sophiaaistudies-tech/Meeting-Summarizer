@@ -1,5 +1,7 @@
 # Meeting Summarizer (Georgian)
 
+**Live app: https://meeting-summarizer-production-81bf.up.railway.app**
+
 Turns a recorded meeting into a structured summary and emails it to the attendees. Built for Georgian-language meetings, which most off-the-shelf meeting tools do not transcribe usably.
 
 Audio or video in, and out comes a titled summary with decisions, action items with an owner and a deadline, and a list of unresolved questions, delivered as a formatted HTML email with the full transcript collapsed underneath.
