@@ -80,6 +80,7 @@ Other limits, all configurable in `.env`:
 | `MAX_JOBS_PER_HOUR` | 5 | Per IP address |
 | `ALLOWED_RECIPIENT_DOMAINS` | empty | Restricts recipients, for example `gah.ge,gmail.com` |
 | `ADMIN_EMAIL` | empty | Gets a short email after every run, worked or failed |
+| `TRUST_PROXY` | empty | Set to `1` behind a proxy so rate limiting sees the real visitor |
 
 Recordings are written to a temporary file, processed, and deleted. Nothing is stored on the server.
 
@@ -136,6 +137,14 @@ web: uvicorn app:app --host 0.0.0.0 --port $PORT
 
 Set every variable from `.env.example` in the host's environment. The filesystem can be ephemeral, since uploads are temporary by design.
 
+Set `TRUST_PROXY=1` on any host that terminates TLS in front of the app. Without it the app sees the proxy's address rather than the visitor's, so every user shares a single rate-limit allowance and notifications report a useless IP. It defaults off because the `X-Forwarded-For` header is trivially forged when an app is reachable directly.
+
+A public URL changes the threat model. Use a passcode that is long and not derived from anything printed in the summary email, and consider setting `ALLOWED_RECIPIENT_DOMAINS` so the page cannot be used to mail strangers from your account.
+
 ## Stack
 
 Python, FastAPI, ElevenLabs Scribe v2, Anthropic Claude, Gmail SMTP.
+
+## Licence
+
+MIT. See `LICENSE`.

@@ -14,6 +14,8 @@ Environment variables, in addition to the pipeline's own keys:
     ALLOWED_RECIPIENT_DOMAINS    optional, comma separated, e.g. gah.ge,gmail.com
     MAX_JOBS_PER_HOUR            optional, default 5, per IP address
     ADMIN_EMAIL                  optional, gets a notification for every run
+    TRUST_PROXY                  optional, set to 1 when running behind a proxy
+                                 such as Railway, so the real visitor IP is used
 """
 
 import os
@@ -42,6 +44,7 @@ from notify import notify_admin            # noqa: E402
 APP_PASSCODE = os.getenv("APP_PASSCODE", "").strip()
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "25"))
 MAX_JOBS_PER_HOUR = int(os.getenv("MAX_JOBS_PER_HOUR", "5"))
+TRUST_PROXY = os.getenv("TRUST_PROXY", "").strip().lower() in ("1", "true", "yes")
 ALLOWED_DOMAINS = [
     d.strip().lower()
     for d in os.getenv("ALLOWED_RECIPIENT_DOMAINS", "").split(",")
@@ -78,6 +81,23 @@ def _fail_closed():
 def _set(job_id, **fields):
     with _jobs_lock:
         _jobs.setdefault(job_id, {}).update(fields)
+
+
+def _client_ip(request: Request) -> str:
+    """
+    The visitor's address.
+
+    Behind a proxy such as Railway, request.client.host is the proxy, so every
+    visitor would share one rate limit bucket. X-Forwarded-For holds the chain,
+    with the original client first. Only trusted when TRUST_PROXY is set, because
+    the header is trivially forged when the app is reachable directly.
+    """
+    if TRUST_PROXY:
+        forwarded = request.headers.get("x-forwarded-for", "")
+        first = forwarded.split(",")[0].strip()
+        if first:
+            return first
+    return request.client.host if request.client else "unknown"
 
 
 def _rate_limited(ip) -> bool:
@@ -178,7 +198,7 @@ async def create_job(
     if not secrets.compare_digest(passcode.strip(), APP_PASSCODE):
         raise HTTPException(401, "Wrong passcode.")
 
-    ip = request.client.host if request.client else "unknown"
+    ip = _client_ip(request)
     if _rate_limited(ip):
         raise HTTPException(
             429, f"Limit of {MAX_JOBS_PER_HOUR} summaries an hour reached. Try later."

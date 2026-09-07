@@ -18,6 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
+# Set before app import. notify.py reads ADMIN_EMAIL at import time, and an empty
+# value makes notify_admin return before it ever opens an SMTP connection.
+os.environ["ADMIN_EMAIL"] = ""
 os.environ["APP_PASSCODE"] = "test-code"
 os.environ["MAX_UPLOAD_MB"] = "1"
 os.environ["MAX_JOBS_PER_HOUR"] = "100"
@@ -27,9 +30,22 @@ import app as webapp  # noqa: E402
 SENT = []
 
 
+NOTIFIED = []
+
+
 @pytest.fixture(autouse=True)
 def fakes(monkeypatch):
+    """
+    Nothing in this suite may touch the network or send mail.
+
+    notify_admin is replaced for every test, not only the ones that assert on it.
+    Without this, any test that runs a job would call the real notifier, which
+    reads ADMIN_EMAIL from .env and sends genuine email through Gmail.
+    """
     SENT.clear()
+    NOTIFIED.clear()
+    monkeypatch.setattr(webapp, "notify_admin",
+                        lambda subject, fields: NOTIFIED.append((subject, fields)))
     monkeypatch.setattr(webapp, "transcribe", lambda p: "speaker_0: გამარჯობა")
     monkeypatch.setattr(
         webapp, "summarize",
@@ -246,3 +262,84 @@ def test_notifications_off_when_admin_email_unset(monkeypatch):
     import notify
     monkeypatch.setattr(notify, "ADMIN_EMAIL", "")
     assert notify.notify_admin("x", {"a": "b"}) is False
+
+
+# ---------- client IP behind a proxy ----------
+
+def test_forwarded_header_ignored_when_proxy_not_trusted(client, monkeypatch):
+    monkeypatch.setattr(webapp, "TRUST_PROXY", False)
+    monkeypatch.setattr(webapp, "MAX_JOBS_PER_HOUR", 1)
+    h1 = {"X-Forwarded-For": "1.1.1.1"}
+    h2 = {"X-Forwarded-For": "2.2.2.2"}
+    assert client.post("/api/jobs", data={"passcode": "test-code", "recipients": "a@b.ge"},
+                       files={"file": ("a.m4a", io.BytesIO(b"x" * 999), "audio/mp4")},
+                       headers=h1).status_code == 200
+    # different forwarded IP, but the header is not trusted, so same bucket
+    assert client.post("/api/jobs", data={"passcode": "test-code", "recipients": "a@b.ge"},
+                       files={"file": ("a.m4a", io.BytesIO(b"x" * 999), "audio/mp4")},
+                       headers=h2).status_code == 429
+
+
+def test_forwarded_header_used_when_proxy_trusted(client, monkeypatch):
+    monkeypatch.setattr(webapp, "TRUST_PROXY", True)
+    monkeypatch.setattr(webapp, "MAX_JOBS_PER_HOUR", 1)
+    mk = lambda ip: dict(data={"passcode": "test-code", "recipients": "a@b.ge"},
+                         files={"file": ("a.m4a", io.BytesIO(b"x" * 999), "audio/mp4")},
+                         headers={"X-Forwarded-For": ip})
+    assert client.post("/api/jobs", **mk("1.1.1.1")).status_code == 200
+    # a different visitor gets their own allowance
+    assert client.post("/api/jobs", **mk("2.2.2.2")).status_code == 200
+    # the first visitor is now over their limit
+    assert client.post("/api/jobs", **mk("1.1.1.1")).status_code == 429
+
+
+def test_forwarded_chain_takes_the_original_client(client, monkeypatch):
+    monkeypatch.setattr(webapp, "TRUST_PROXY", True)
+    seen = {}
+    monkeypatch.setattr(webapp, "notify_admin",
+                        lambda subject, fields: seen.update(fields=fields))
+    r = client.post("/api/jobs", data={"passcode": "test-code", "recipients": "a@b.ge"},
+                    files={"file": ("a.m4a", io.BytesIO(b"x" * 999), "audio/mp4")},
+                    headers={"X-Forwarded-For": "9.9.9.9, 10.0.0.1, 172.16.0.1"})
+    wait_done(client, r.json()["job_id"])
+    assert seen["fields"]["From IP"] == "9.9.9.9"
+
+
+# ---------- the suite must never send real mail ----------
+
+def test_no_test_can_reach_smtp(client, monkeypatch):
+    """
+    A regression guard. An earlier version of this suite left the real notifier in
+    place for most tests, so running pytest sent a burst of genuine emails through
+    the operator's Gmail account. Any SMTP connection from a test now fails loudly.
+    """
+    import smtplib
+
+    def forbidden(*a, **k):
+        raise AssertionError("a test tried to open an SMTP connection")
+
+    monkeypatch.setattr(smtplib, "SMTP_SSL", forbidden)
+    monkeypatch.setattr(smtplib, "SMTP", forbidden)
+
+    r = upload(client, recipients="a@b.ge")
+    d = wait_done(client, r.json()["job_id"])
+    assert d["stage"] == "done"
+    # the notification was recorded by the fake, not sent
+    assert len(NOTIFIED) == 1
+    assert NOTIFIED[0][0] == "Meeting summarizer: worked"
+
+
+def test_real_notifier_is_inert_without_admin_email():
+    """notify.py must not attempt SMTP when ADMIN_EMAIL is empty, as it is here."""
+    import smtplib
+    import notify
+
+    original = smtplib.SMTP_SSL
+    try:
+        smtplib.SMTP_SSL = lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("notify_admin opened SMTP with no ADMIN_EMAIL")
+        )
+        assert notify.ADMIN_EMAIL == ""
+        assert notify.notify_admin("subject", {"a": "b"}) is False
+    finally:
+        smtplib.SMTP_SSL = original
